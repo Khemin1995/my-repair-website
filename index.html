@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบแจ้งซ่อม (เชื่อมโยงราคาอัตโนมัติ)</title>
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: 'Kanit', sans-serif;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+            font-family: 'Kanit', sans-serif;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #repairList {
+            margin-top: 30px;
+        }
+        .repair-item {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        .status-pending {
+            border-left-color: #f39c12;
+        }
+        .status-waiting-payment {
+            border-left-color: #e74c3c;
+        }
+        .status-completed {
+            border-left-color: #2ecc71;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .filter-buttons button {
+            flex: 1;
+        }
+        .cost-info {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #e3f2fd;
+            display: none;
+        }
+        .repair-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .action-buttons button {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        .paid-item {
+            background-color: #fff8e1;
+        }
+        .no-cost-item {
+            background-color: #e8f5e9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ระบบแจ้งซ่อม</h1>
+        
+        <div class="form-group">
+            <label for="roomNumber">เลขห้อง</label>
+            <input type="text" id="roomNumber" placeholder="เช่น 101, 202">
+        </div>
+        
+        <div class="form-group">
+            <label for="reporterName">ชื่อผู้แจ้ง</label>
+            <input type="text" id="reporterName" placeholder="ชื่อ-นามสกุล">
+        </div>
+        
+        <div class="form-group">
+            <label for="repairItem">เลือกอุปกรณ์/ระบบที่ต้องการซ่อม</label>
+            <select id="repairItem" onchange="updateCostInfo()">
+                <option value="">-- กรุณาเลือก --</option>
+                <!-- ตัวเลือกจะถูกเพิ่มโดย JavaScript -->
+            </select>
+        </div>
+        
+        <div id="costInfo" class="cost-info">
+            <p><strong>ประเภทค่าใช้จ่าย:</strong> <span id="costTypeDisplay"></span></p>
+            <p><strong>ราคาซ่อม:</strong> <span id="costAmountDisplay"></span></p>
+        </div>
+        
+        <div class="form-group">
+            <label for="repairDetail">รายละเอียดปัญหา</label>
+            <textarea id="repairDetail" rows="4" placeholder="อธิบายปัญหาที่พบ"></textarea>
+        </div>
+        
+        <button onclick="submitRepair()">แจ้งซ่อม</button>
+        
+        <div class="filter-buttons">
+            <button onclick="filterRepairs('all')">ทั้งหมด</button>
+            <button onclick="filterRepairs('pending')">รอซ่อม</button>
+            <button onclick="filterRepairs('waiting-payment')">รอจ่ายเงิน</button>
+            <button onclick="filterRepairs('completed')">เสร็จสิ้น</button>
+        </div>
+        
+        <div id="repairList">
+            <h2>รายการแจ้งซ่อม</h2>
+            <!-- รายการจะแสดงที่นี่ -->
+        </div>
+    </div>
+
+    <script>
+        // ข้อมูลอุปกรณ์และราคาซ่อม (สามารถดึงจาก API หรือฐานข้อมูลจริงได้)
+        const repairItemsData = [
+            { id: 1, name: "หลอดไฟ", costType: "ไม่เสียเงิน", costAmount: 0 },
+            { id: 2, name: "สวิตช์ไฟ", costType: "ไม่เสียเงิน", costAmount: 0 },
+            { id: 3, name: "เครื่องปรับอากาศ", costType: "เสียเงิน", costAmount: 2000 },
+            { id: 4, name: "ท่อน้ำ", costType: "ไม่เสียเงิน", costAmount: 0 },
+            { id: 5, name: "ก๊อกน้ำ", costType: "เสียเงิน", costAmount: 500 },
+            { id: 6, name: "ตู้เสื้อผ้า", costType: "เสียเงิน", costAmount: 800 },
+            { id: 7, name: "ประตูห้อง", costType: "เสียเงิน", costAmount: 1200 },
+            { id: 8, name: "ปลั๊กไฟ", costType: "ไม่เสียเงิน", costAmount: 0 }
+        ];
+
+        // เก็บข้อมูลการแจ้งซ่อม
+        let repairs = [];
+        
+        // เตรียมข้อมูลเมื่อหน้าเว็บโหลดเสร็จ
+        window.onload = function() {
+            // เพิ่มตัวเลือกอุปกรณ์ใน dropdown
+            const repairItemSelect = document.getElementById('repairItem');
+            repairItemsData.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.name;
+                repairItemSelect.appendChild(option);
+            });
+            
+            // ข้อมูลตัวอย่าง (สามารถลบออกได้)
+            repairs = [
+                {
+                    id: 1,
+                    roomNumber: "101",
+                    reporterName: "สมชาย ใจดี",
+                    repairItemId: 1,
+                    repairItemName: "หลอดไฟ",
+                    costType: "ไม่เสียเงิน",
+                    costAmount: 0,
+                    repairDetail: "ไฟในห้องน้ำไม่ทำงาน",
+                    date: "10/05/2023, 09:30:45",
+                    status: "รอซ่อม",
+                    updatedAt: "10/05/2023, 09:30:45"
+                },
+                {
+                    id: 2,
+                    roomNumber: "202",
+                    reporterName: "สมหญิง สวยงาม",
+                    repairItemId: 3,
+                    repairItemName: "เครื่องปรับอากาศ",
+                    costType: "เสียเงิน",
+                    costAmount: 2000,
+                    repairDetail: "แอร์ไม่เย็น",
+                    date: "09/05/2023, 14:20:30",
+                    status: "รอจ่ายเงิน",
+                    updatedAt: "09/05/2023, 14:20:30"
+                }
+            ];
+            
+            updateRepairList();
+        };
+        
+        // อัปเดตข้อมูลค่าใช้จ่ายเมื่อเลือกอุปกรณ์
+        function updateCostInfo() {
+            const repairItemId = parseInt(document.getElementById('repairItem').value);
+            const costInfo = document.getElementById('costInfo');
+            const costTypeDisplay = document.getElementById('costTypeDisplay');
+            const costAmountDisplay = document.getElementById('costAmountDisplay');
+            
+            if (!repairItemId) {
+                costInfo.style.display = 'none';
+                return;
+            }
+            
+            const selectedItem = repairItemsData.find(item => item.id === repairItemId);
+            
+            if (selectedItem) {
+                costTypeDisplay.textContent = selectedItem.costType;
+                costAmountDisplay.textContent = selectedItem.costType === 'เสียเงิน' 
+                    ? selectedItem.costAmount.toLocaleString() + ' บาท' 
+                    : 'ไม่มีค่าใช้จ่าย';
+                costInfo.style.display = 'block';
+            } else {
+                costInfo.style.display = 'none';
+            }
+        }
+        
+        function submitRepair() {
+            // รับค่าจากฟอร์ม
+            const roomNumber = document.getElementById('roomNumber').value;
+            const reporterName = document.getElementById('reporterName').value;
+            const repairItemId = parseInt(document.getElementById('repairItem').value);
+            const repairDetail = document.getElementById('repairDetail').value;
+            
+            // ตรวจสอบข้อมูล
+            if (!roomNumber || !reporterName || !repairItemId || !repairDetail) {
+                alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                return;
+            }
+            
+            // หาข้อมูลอุปกรณ์ที่เลือก
+            const selectedItem = repairItemsData.find(item => item.id === repairItemId);
+            if (!selectedItem) {
+                alert('ไม่พบข้อมูลอุปกรณ์ที่เลือก');
+                return;
+            }
+            
+            // กำหนดสถานะเริ่มต้น
+            let status = selectedItem.costType === 'เสียเงิน' ? 'รอจ่ายเงิน' : 'รอซ่อม';
+            
+            // สร้างออบเจ็กต์การแจ้งซ่อม
+            const repair = {
+                id: Date.now(), // ใช้ timestamp เป็น ID
+                roomNumber,
+                reporterName,
+                repairItemId: selectedItem.id,
+                repairItemName: selectedItem.name,
+                costType: selectedItem.costType,
+                costAmount: selectedItem.costAmount,
+                repairDetail,
+                date: new Date().toLocaleString(),
+                status: status,
+                updatedAt: new Date().toLocaleString()
+            };
+            
+            // เพิ่มลงในอาร์เรย์
+            repairs.push(repair);
+            
+            // อัพเดทรายการ
+            updateRepairList();
+            
+            // เคลียร์ฟอร์ม
+            document.getElementById('roomNumber').value = '';
+            document.getElementById('reporterName').value = '';
+            document.getElementById('repairItem').value = '';
+            document.getElementById('repairDetail').value = '';
+            document.getElementById('costInfo').style.display = 'none';
+            
+            alert('แจ้งซ่อมเรียบร้อยแล้ว');
+        }
+        
+        function updateRepairList(filter = 'all') {
+            const repairListElement = document.getElementById('repairList');
+            
+            // กรองรายการตามสถานะ
+            let filteredRepairs = repairs;
+            if (filter === 'pending') {
+                filteredRepairs = repairs.filter(repair => repair.status === 'รอซ่อม');
+            } else if (filter === 'waiting-payment') {
+                filteredRepairs = repairs.filter(repair => repair.status === 'รอจ่ายเงิน');
+            } else if (filter === 'completed') {
+                filteredRepairs = repairs.filter(repair => repair.status === 'เสร็จสิ้น');
+            }
+            
+            // สร้าง HTML สำหรับแต่ละรายการ
+            let html = '<h2>รายการแจ้งซ่อม (' + getStatusName(filter) + ')</h2>';
+            
+            if (filteredRepairs.length === 0) {
+                html += '<p>ไม่พบรายการแจ้งซ่อม</p>';
+            } else {
+                filteredRepairs.forEach(repair => {
+                    const statusClass = getStatusClass(repair.status);
+                    const costClass = repair.costType === 'เสียเงิน' ? 'paid-item' : 'no-cost-item';
+                    
+                    html += `
+                        <div class="repair-item ${statusClass} ${costClass}">
+                            <div class="repair-details">
+                                <div>
+                                    <p><strong>ห้อง:</strong> ${repair.roomNumber}</p>
+                                    <p><strong>ผู้แจ้ง:</strong> ${repair.reporterName}</p>
+                                    <p><strong>อุปกรณ์:</strong> ${repair.repairItemName}</p>
+                                </div>
+                                <div>
+                                    <p><strong>ค่าใช้จ่าย:</strong> ${repair.costType}${repair.costType === 'เสียเงิน' ? ' (' + repair.costAmount.toLocaleString() + ' บาท)' : ''}</p>
+                                    <p><strong>สถานะ:</strong> ${repair.status}</p>
+                                    <p><strong>วันที่แจ้ง:</strong> ${repair.date}</p>
+                                    <p><strong>อัปเดตล่าสุด:</strong> ${repair.updatedAt}</p>
+                                </div>
+                            </div>
+                            <p><strong>รายละเอียด:</strong> ${repair.repairDetail}</p>
+                            
+                            <div class="action-buttons">
+                                ${repair.status !== 'เสร็จสิ้น' ? `
+                                    <button onclick="updateStatus(${repair.id}, 'รอซ่อม')">รอซ่อม</button>
+                                    ${repair.costType === 'เสียเงิน' ? `<button onclick="updateStatus(${repair.id}, 'รอจ่ายเงิน')">รอจ่ายเงิน</button>` : ''}
+                                    <button onclick="updateStatus(${repair.id}, 'เสร็จสิ้น')">เสร็จสิ้น</button>
+                                ` : ''}
+                                <button onclick="deleteRepair(${repair.id})">ลบ</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            repairListElement.innerHTML = html;
+        }
+        
+        function getStatusName(filter) {
+            switch(filter) {
+                case 'all': return 'ทั้งหมด';
+                case 'pending': return 'รอซ่อม';
+                case 'waiting-payment': return 'รอจ่ายเงิน';
+                case 'completed': return 'เสร็จสิ้น';
+                default: return 'ทั้งหมด';
+            }
+        }
+        
+        function getStatusClass(status) {
+            switch(status) {
+                case 'รอซ่อม': return 'status-pending';
+                case 'รอจ่ายเงิน': return 'status-waiting-payment';
+                case 'เสร็จสิ้น': return 'status-completed';
+                default: return '';
+            }
+        }
+        
+        function filterRepairs(filter) {
+            updateRepairList(filter);
+        }
+        
+        function updateStatus(id, newStatus) {
+            const repairIndex = repairs.findIndex(repair => repair.id === id);
+            if (repairIndex !== -1) {
+                repairs[repairIndex].status = newStatus;
+                repairs[repairIndex].updatedAt = new Date().toLocaleString();
+                updateRepairList();
+                alert('อัปเดตสถานะเรียบร้อยแล้ว');
+            }
+        }
+        
+        function deleteRepair(id) {
+            if (confirm('คุณแน่ใจว่าต้องการลบรายการนี้?')) {
+                repairs = repairs.filter(repair => repair.id !== id);
+                updateRepairList();
+                alert('ลบรายการเรียบร้อยแล้ว');
+            }
+        }
+    </script>
+</body>
+</html>
