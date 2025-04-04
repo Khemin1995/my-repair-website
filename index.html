@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบแจ้งซ่อม (เชื่อมโยงราคาอัตโนมัติ)</title>
+    <title>ระบบแจ้งซ่อม (แยกผู้ใช้และผู้ควบคุม)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Kanit', sans-serif;
@@ -109,57 +111,401 @@
         .no-cost-item {
             background-color: #e8f5e9;
         }
+        .slip-section {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f0f7ff;
+            border-radius: 4px;
+        }
+        .slip-section h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .view-slip-btn {
+            background-color: #4CAF50;
+            margin-top: 5px;
+        }
+        .view-slip-btn:hover {
+            background-color: #3e8e41;
+        }
+        .upload-slip-btn {
+            background-color: #2196F3;
+            margin-top: 5px;
+        }
+        .upload-slip-btn:hover {
+            background-color: #0b7dda;
+        }
+        .remove-slip-btn {
+            background-color: #f44336;
+            margin-top: 5px;
+        }
+        .remove-slip-btn:hover {
+            background-color: #d32f2f;
+        }
+        #slipUpload {
+            display: none;
+        }
+        .slip-image {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        .modal-content {
+            display: block;
+            margin: 5% auto;
+            max-width: 80%;
+            max-height: 80%;
+        }
+        .close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .slip-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .status-info {
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #e3f2fd;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .user-type-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .user-type-btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .user-type-btn.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .user-type-btn:not(.active) {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        .admin-section {
+            display: none;
+        }
+        .user-section {
+            display: none;
+        }
+        .visible {
+            display: block;
+        }
+        .login-modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .login-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 300px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .login-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        .login-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .login-btn:hover {
+            background-color: #45a049;
+        }
+        .error-message {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            z-index: 1002;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .notification.success {
+            background-color: #2ecc71;
+        }
+        .notification.error {
+            background-color: #e74c3c;
+        }
+        .notification.warning {
+            background-color: #f39c12;
+        }
+        .notification.info {
+            background-color: #3498db;
+        }
+        .stats-section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .stat-card .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-card .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        .backup-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .backup-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .backup-buttons button {
+            flex: 1;
+        }
+        .repair-id {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .history-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+        }
+        .history-date {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        .history-status {
+            display: inline-block;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .history-status-pending {
+            background-color: #f39c12;
+            color: white;
+        }
+        .history-status-waiting {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .history-status-completed {
+            background-color: #2ecc71;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>ระบบแจ้งซ่อม</h1>
         
-        <div class="form-group">
-            <label for="roomNumber">เลขห้อง</label>
-            <input type="text" id="roomNumber" placeholder="เช่น 101, 202">
+        <div class="user-type-selector">
+            <button id="userBtn" class="user-type-btn active" onclick="switchUserType('user')">ผู้แจ้งซ่อม</button>
+            <button id="adminBtn" class="user-type-btn" onclick="requestAdminAccess()">ผู้ควบคุมระบบ</button>
         </div>
         
-        <div class="form-group">
-            <label for="reporterName">ชื่อผู้แจ้ง</label>
-            <input type="text" id="reporterName" placeholder="ชื่อ-นามสกุล">
+        <!-- ส่วนของผู้ใช้ทั่วไป (แจ้งซ่อม) -->
+        <div id="userSection" class="user-section visible">
+            <div class="form-group">
+                <label for="roomNumber">เลขห้อง</label>
+                <input type="text" id="roomNumber" placeholder="เช่น 101, 202">
+            </div>
+            
+            <div class="form-group">
+                <label for="reporterName">ชื่อผู้แจ้ง</label>
+                <input type="text" id="reporterName" placeholder="ชื่อ-นามสกุล">
+            </div>
+            
+            <div class="form-group">
+                <label for="repairItem">เลือกอุปกรณ์/ระบบที่ต้องการซ่อม</label>
+                <select id="repairItem" onchange="updateCostInfo()">
+                    <option value="">-- กรุณาเลือก --</option>
+                    <!-- ตัวเลือกจะถูกเพิ่มโดย JavaScript -->
+                </select>
+            </div>
+            
+            <div id="costInfo" class="cost-info">
+                <p><strong>ประเภทค่าใช้จ่าย:</strong> <span id="costTypeDisplay"></span></p>
+                <p><strong>ราคาซ่อม:</strong> <span id="costAmountDisplay"></span></p>
+            </div>
+            
+            <div class="form-group">
+                <label for="repairDetail">รายละเอียดปัญหา</label>
+                <textarea id="repairDetail" rows="4" placeholder="อธิบายปัญหาที่พบ"></textarea>
+            </div>
+            
+            <button onclick="submitRepair()">แจ้งซ่อม</button>
+            
+            <div id="userRepairList">
+                <h2>รายการแจ้งซ่อมของคุณ</h2>
+                <!-- รายการจะแสดงที่นี่ -->
+            </div>
         </div>
         
-        <div class="form-group">
-            <label for="repairItem">เลือกอุปกรณ์/ระบบที่ต้องการซ่อม</label>
-            <select id="repairItem" onchange="updateCostInfo()">
-                <option value="">-- กรุณาเลือก --</option>
-                <!-- ตัวเลือกจะถูกเพิ่มโดย JavaScript -->
-            </select>
-        </div>
-        
-        <div id="costInfo" class="cost-info">
-            <p><strong>ประเภทค่าใช้จ่าย:</strong> <span id="costTypeDisplay"></span></p>
-            <p><strong>ราคาซ่อม:</strong> <span id="costAmountDisplay"></span></p>
-        </div>
-        
-        <div class="form-group">
-            <label for="repairDetail">รายละเอียดปัญหา</label>
-            <textarea id="repairDetail" rows="4" placeholder="อธิบายปัญหาที่พบ"></textarea>
-        </div>
-        
-        <button onclick="submitRepair()">แจ้งซ่อม</button>
-        
-        <div class="filter-buttons">
-            <button onclick="filterRepairs('all')">ทั้งหมด</button>
-            <button onclick="filterRepairs('pending')">รอซ่อม</button>
-            <button onclick="filterRepairs('waiting-payment')">รอจ่ายเงิน</button>
-            <button onclick="filterRepairs('completed')">เสร็จสิ้น</button>
-        </div>
-        
-        <div id="repairList">
-            <h2>รายการแจ้งซ่อม</h2>
-            <!-- รายการจะแสดงที่นี่ -->
+        <!-- ส่วนของผู้ควบคุมระบบ -->
+        <div id="adminSection" class="admin-section">
+            <!-- ส่วนแสดงสถิติ -->
+            <div class="stats-section">
+                <h2>สถิติการแจ้งซ่อม</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>ทั้งหมด</h3>
+                        <div class="stat-value" id="totalRepairs">0</div>
+                        <div class="stat-label">รายการ</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>รอซ่อม</h3>
+                        <div class="stat-value" id="pendingRepairs">0</div>
+                        <div class="stat-label">รายการ</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>รอจ่ายเงิน</h3>
+                        <div class="stat-value" id="waitingPaymentRepairs">0</div>
+                        <div class="stat-label">รายการ</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>เสร็จสิ้น</h3>
+                        <div class="stat-value" id="completedRepairs">0</div>
+                        <div class="stat-label">รายการ</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="itemChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="filter-buttons">
+                <button onclick="filterRepairs('all')">ทั้งหมด</button>
+                <button onclick="filterRepairs('pending')">รอซ่อม</button>
+                <button onclick="filterRepairs('waiting-payment')">รอจ่ายเงิน</button>
+                <button onclick="filterRepairs('completed')">เสร็จสิ้น</button>
+            </div>
+            
+            <div id="repairList">
+                <h2>รายการแจ้งซ่อมทั้งหมด</h2>
+                <!-- รายการจะแสดงที่นี่ -->
+            </div>
+            
+            <!-- ส่วนการสำรองข้อมูล -->
+            <div class="backup-section">
+                <h2>การสำรองข้อมูล</h2>
+                <p>คุณสามารถสำรองข้อมูลการแจ้งซ่อมทั้งหมดหรือนำเข้าข้อมูลจากไฟล์สำรอง</p>
+                
+                <div class="backup-buttons">
+                    <button onclick="exportData()">ส่งออกข้อมูล</button>
+                    <button onclick="document.getElementById('importFile').click()">นำเข้าข้อมูล</button>
+                    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- Modal สำหรับแสดงสลิปเต็มขนาด -->
+    <div id="slipModal" class="modal">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <img class="modal-content" id="modalSlipImage">
+    </div>
+
+    <!-- Modal สำหรับล็อกอินผู้ควบคุมระบบ -->
+    <div id="loginModal" class="login-modal">
+        <div class="login-content">
+            <h2>เข้าสู่ระบบผู้ควบคุม</h2>
+            <p>กรุณากรอกรหัสผ่าน</p>
+            <input type="password" id="adminPassword" class="login-input" placeholder="รหัสผ่าน">
+            <button class="login-btn" onclick="checkAdminPassword()">เข้าสู่ระบบ</button>
+            <p id="loginError" class="error-message">รหัสผ่านไม่ถูกต้อง</p>
+        </div>
+    </div>
+
+    <!-- Notification Popup -->
+    <div id="notification" class="notification"></div>
+
     <script>
-        // ข้อมูลอุปกรณ์และราคาซ่อม (สามารถดึงจาก API หรือฐานข้อมูลจริงได้)
+        // ข้อมูลอุปกรณ์และราคาซ่อม
         const repairItemsData = [
             { id: 1, name: "หลอดไฟ", costType: "ไม่เสียเงิน", costAmount: 0 },
             { id: 2, name: "สวิตช์ไฟ", costType: "ไม่เสียเงิน", costAmount: 0 },
@@ -173,6 +519,12 @@
 
         // เก็บข้อมูลการแจ้งซ่อม
         let repairs = [];
+        let currentUserType = 'user'; // 'user' หรือ 'admin'
+        const ADMIN_PASSWORD = "Liverpool"; // รหัสผ่านสำหรับผู้ควบคุมระบบ
+        let statusChart, itemChart;
+        
+        // ตัวแปรสำหรับเลขที่คำสั่งซ่อม
+        let repairCounter = 1;
         
         // เตรียมข้อมูลเมื่อหน้าเว็บโหลดเสร็จ
         window.onload = function() {
@@ -185,38 +537,130 @@
                 repairItemSelect.appendChild(option);
             });
             
-            // ข้อมูลตัวอย่าง (สามารถลบออกได้)
-            repairs = [
-                {
-                    id: 1,
-                    roomNumber: "101",
-                    reporterName: "สมชาย ใจดี",
-                    repairItemId: 1,
-                    repairItemName: "หลอดไฟ",
-                    costType: "ไม่เสียเงิน",
-                    costAmount: 0,
-                    repairDetail: "ไฟในห้องน้ำไม่ทำงาน",
-                    date: "10/05/2023, 09:30:45",
-                    status: "รอซ่อม",
-                    updatedAt: "10/05/2023, 09:30:45"
-                },
-                {
-                    id: 2,
-                    roomNumber: "202",
-                    reporterName: "สมหญิง สวยงาม",
-                    repairItemId: 3,
-                    repairItemName: "เครื่องปรับอากาศ",
-                    costType: "เสียเงิน",
-                    costAmount: 2000,
-                    repairDetail: "แอร์ไม่เย็น",
-                    date: "09/05/2023, 14:20:30",
-                    status: "รอจ่ายเงิน",
-                    updatedAt: "09/05/2023, 14:20:30"
-                }
-            ];
+            // โหลดข้อมูลจาก localStorage ถ้ามี
+            loadFromLocalStorage();
             
+            // อัปเดตเลขที่คำสั่งซ่อม
+            updateRepairCounter();
+            
+            // อัปเดต UI
             updateRepairList();
+            updateUserRepairList();
+            updateStats();
         };
+        
+        // โหลดข้อมูลจาก localStorage
+        function loadFromLocalStorage() {
+            const savedRepairs = localStorage.getItem('repairSystemData');
+            const savedCounter = localStorage.getItem('repairCounter');
+            
+            if (savedRepairs) {
+                try {
+                    const parsedData = JSON.parse(savedRepairs);
+                    if (Array.isArray(parsedData.repairs)) {
+                        repairs = parsedData.repairs;
+                    }
+                    
+                    if (parsedData.repairCounter) {
+                        repairCounter = parsedData.repairCounter;
+                    }
+                    
+                    showNotification('โหลดข้อมูลสำเร็จ', 'success');
+                } catch (e) {
+                    console.error('Error loading data:', e);
+                    showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+                }
+            }
+        }
+        
+        // บันทึกข้อมูลลง localStorage
+        function saveToLocalStorage() {
+            const dataToSave = {
+                repairs: repairs,
+                repairCounter: repairCounter,
+                lastBackup: new Date().toISOString()
+            };
+            
+            localStorage.setItem('repairSystemData', JSON.stringify(dataToSave));
+            localStorage.setItem('repairCounter', repairCounter);
+        }
+        
+        // อัปเดตเลขที่คำสั่งซ่อม
+        function updateRepairCounter() {
+            if (repairs.length > 0) {
+                const maxId = Math.max(...repairs.map(r => r.id));
+                repairCounter = maxId + 1;
+            } else {
+                repairCounter = 1;
+            }
+        }
+        
+        // สร้างเลขที่คำสั่งซ่อม
+        function generateRepairId() {
+            const now = new Date();
+            const year = now.getFullYear().toString().slice(-2);
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const day = now.getDate().toString().padStart(2, '0');
+            const sequence = repairCounter.toString().padStart(4, '0');
+            
+            return `REP-${year}${month}${day}-${sequence}`;
+        }
+        
+        // แสดงการแจ้งเตือน
+        function showNotification(message, type = 'info', duration = 3000) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.opacity = '1';
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+            }, duration);
+        }
+        
+        // ฟังก์ชันขอเข้าถึงโหมดผู้ควบคุม
+        function requestAdminAccess() {
+            document.getElementById('loginModal').style.display = 'block';
+        }
+        
+        // ตรวจสอบรหัสผ่านผู้ควบคุม
+        function checkAdminPassword() {
+            const password = document.getElementById('adminPassword').value;
+            const errorElement = document.getElementById('loginError');
+            
+            if (password === ADMIN_PASSWORD) {
+                switchUserType('admin');
+                document.getElementById('loginModal').style.display = 'none';
+                document.getElementById('adminPassword').value = '';
+                errorElement.style.display = 'none';
+                showNotification('เข้าสู่ระบบผู้ควบคุมเรียบร้อย', 'success');
+            } else {
+                errorElement.style.display = 'block';
+                showNotification('รหัสผ่านไม่ถูกต้อง', 'error');
+            }
+        }
+        
+        // สลับระหว่างโหมดผู้ใช้และผู้ควบคุม
+        function switchUserType(type) {
+            currentUserType = type;
+            const userBtn = document.getElementById('userBtn');
+            const adminBtn = document.getElementById('adminBtn');
+            const userSection = document.getElementById('userSection');
+            const adminSection = document.getElementById('adminSection');
+            
+            if (type === 'user') {
+                userBtn.classList.add('active');
+                adminBtn.classList.remove('active');
+                userSection.classList.add('visible');
+                adminSection.classList.remove('visible');
+            } else {
+                userBtn.classList.remove('active');
+                adminBtn.classList.add('active');
+                userSection.classList.remove('visible');
+                adminSection.classList.add('visible');
+                updateStats(); // อัปเดตสถิติเมื่อเข้าสู่โหมดผู้ควบคุม
+            }
+        }
         
         // อัปเดตข้อมูลค่าใช้จ่ายเมื่อเลือกอุปกรณ์
         function updateCostInfo() {
@@ -245,30 +689,34 @@
         
         function submitRepair() {
             // รับค่าจากฟอร์ม
-            const roomNumber = document.getElementById('roomNumber').value;
-            const reporterName = document.getElementById('reporterName').value;
+            const roomNumber = document.getElementById('roomNumber').value.trim();
+            const reporterName = document.getElementById('reporterName').value.trim();
             const repairItemId = parseInt(document.getElementById('repairItem').value);
-            const repairDetail = document.getElementById('repairDetail').value;
+            const repairDetail = document.getElementById('repairDetail').value.trim();
             
             // ตรวจสอบข้อมูล
             if (!roomNumber || !reporterName || !repairItemId || !repairDetail) {
-                alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                showNotification('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
                 return;
             }
             
             // หาข้อมูลอุปกรณ์ที่เลือก
             const selectedItem = repairItemsData.find(item => item.id === repairItemId);
             if (!selectedItem) {
-                alert('ไม่พบข้อมูลอุปกรณ์ที่เลือก');
+                showNotification('ไม่พบข้อมูลอุปกรณ์ที่เลือก', 'error');
                 return;
             }
             
             // กำหนดสถานะเริ่มต้น
             let status = selectedItem.costType === 'เสียเงิน' ? 'รอจ่ายเงิน' : 'รอซ่อม';
             
+            // สร้างเลขที่คำสั่งซ่อม
+            const repairId = generateRepairId();
+            
             // สร้างออบเจ็กต์การแจ้งซ่อม
             const repair = {
-                id: Date.now(), // ใช้ timestamp เป็น ID
+                id: repairCounter, // ใช้เลขลำดับเป็น ID
+                repairId: repairId, // เลขที่คำสั่งซ่อมแบบอ่านง่าย
                 roomNumber,
                 reporterName,
                 repairItemId: selectedItem.id,
@@ -278,14 +726,25 @@
                 repairDetail,
                 date: new Date().toLocaleString(),
                 status: status,
-                updatedAt: new Date().toLocaleString()
+                updatedAt: new Date().toLocaleString(),
+                slip: null,
+                history: [{
+                    date: new Date().toLocaleString(),
+                    status: status,
+                    action: 'แจ้งซ่อม'
+                }]
             };
             
             // เพิ่มลงในอาร์เรย์
             repairs.push(repair);
+            repairCounter++;
+            
+            // บันทึกข้อมูล
+            saveToLocalStorage();
             
             // อัพเดทรายการ
             updateRepairList();
+            updateUserRepairList();
             
             // เคลียร์ฟอร์ม
             document.getElementById('roomNumber').value = '';
@@ -294,9 +753,10 @@
             document.getElementById('repairDetail').value = '';
             document.getElementById('costInfo').style.display = 'none';
             
-            alert('แจ้งซ่อมเรียบร้อยแล้ว');
+            showNotification('แจ้งซ่อมเรียบร้อยแล้ว', 'success');
         }
         
+        // อัพเดทรายการซ่อมสำหรับผู้ควบคุมระบบ
         function updateRepairList(filter = 'all') {
             const repairListElement = document.getElementById('repairList');
             
@@ -310,6 +770,9 @@
                 filteredRepairs = repairs.filter(repair => repair.status === 'เสร็จสิ้น');
             }
             
+            // เรียงลำดับรายการจากใหม่ไปเก่า
+            filteredRepairs.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            
             // สร้าง HTML สำหรับแต่ละรายการ
             let html = '<h2>รายการแจ้งซ่อม (' + getStatusName(filter) + ')</h2>';
             
@@ -320,10 +783,65 @@
                     const statusClass = getStatusClass(repair.status);
                     const costClass = repair.costType === 'เสียเงิน' ? 'paid-item' : 'no-cost-item';
                     
+                    // สร้าง HTML สำหรับประวัติการเปลี่ยนแปลง
+                    let historyHtml = '';
+                    if (repair.history && repair.history.length > 0) {
+                        historyHtml = '<div style="margin-top:10px;"><strong>ประวัติ:</strong>';
+                        repair.history.forEach(record => {
+                            const statusClass = getHistoryStatusClass(record.status);
+                            historyHtml += `
+                                <div class="history-item">
+                                    <span>${record.action}</span>
+                                    <span class="history-status ${statusClass}">${record.status}</span>
+                                    <div class="history-date">${record.date}</div>
+                                </div>
+                            `;
+                        });
+                        historyHtml += '</div>';
+                    }
+                    
+                    // สร้าง HTML สำหรับสลิปการจ่ายเงิน
+                    let slipHtml = '';
+                    if (repair.costType === 'เสียเงิน') {
+                        slipHtml = `
+                            <div class="slip-section">
+                                <h4>สลิปการจ่ายเงิน</h4>
+                                ${repair.slip ? `
+                                    <div>
+                                        <img id="slipImage${repair.id}" class="slip-image" src="${repair.slip}" alt="สลิปการจ่ายเงิน">
+                                        <div class="slip-actions">
+                                            <button class="view-slip-btn" onclick="viewSlip(${repair.id})">ดูสลิปเต็มขนาด</button>
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div>
+                                        <p>ยังไม่มีสลิปการจ่ายเงิน</p>
+                                    </div>
+                                `}
+                            </div>
+                        `;
+                    }
+                    
+                    // ปุ่มสถานะสำหรับผู้ควบคุม
+                    let statusButtons = '';
+                    if (repair.status !== 'เสร็จสิ้น') {
+                        statusButtons = `
+                            <button onclick="updateStatus(${repair.id}, 'รอซ่อม')">รอซ่อม</button>
+                            ${repair.costType === 'เสียเงิน' ? `<button onclick="updateStatus(${repair.id}, 'รอจ่ายเงิน')">รอจ่ายเงิน</button>` : ''}
+                            <button onclick="updateStatus(${repair.id}, 'เสร็จสิ้น')">เสร็จสิ้น</button>
+                        `;
+                    } else {
+                        statusButtons = `
+                            <button onclick="updateStatus(${repair.id}, 'รอซ่อม')">ย้อนกลับไปรอซ่อม</button>
+                            ${repair.costType === 'เสียเงิน' ? `<button onclick="updateStatus(${repair.id}, 'รอจ่ายเงิน')">ย้อนกลับไปรอจ่ายเงิน</button>` : ''}
+                        `;
+                    }
+                    
                     html += `
                         <div class="repair-item ${statusClass} ${costClass}">
                             <div class="repair-details">
                                 <div>
+                                    <p><strong>เลขที่คำสั่งซ่อม:</strong> <span class="repair-id">${repair.repairId}</span></p>
                                     <p><strong>ห้อง:</strong> ${repair.roomNumber}</p>
                                     <p><strong>ผู้แจ้ง:</strong> ${repair.reporterName}</p>
                                     <p><strong>อุปกรณ์:</strong> ${repair.repairItemName}</p>
@@ -337,12 +855,12 @@
                             </div>
                             <p><strong>รายละเอียด:</strong> ${repair.repairDetail}</p>
                             
+                            ${slipHtml}
+                            
+                            ${historyHtml}
+                            
                             <div class="action-buttons">
-                                ${repair.status !== 'เสร็จสิ้น' ? `
-                                    <button onclick="updateStatus(${repair.id}, 'รอซ่อม')">รอซ่อม</button>
-                                    ${repair.costType === 'เสียเงิน' ? `<button onclick="updateStatus(${repair.id}, 'รอจ่ายเงิน')">รอจ่ายเงิน</button>` : ''}
-                                    <button onclick="updateStatus(${repair.id}, 'เสร็จสิ้น')">เสร็จสิ้น</button>
-                                ` : ''}
+                                ${statusButtons}
                                 <button onclick="deleteRepair(${repair.id})">ลบ</button>
                             </div>
                         </div>
@@ -351,6 +869,389 @@
             }
             
             repairListElement.innerHTML = html;
+        }
+        
+        // อัพเดทรายการซ่อมสำหรับผู้ใช้ทั่วไป
+        function updateUserRepairList() {
+            const userRepairListElement = document.getElementById('userRepairList');
+            const reporterName = document.getElementById('reporterName').value.trim();
+            
+            // กรองเฉพาะรายการของผู้ใช้ปัจจุบัน (ตามชื่อผู้แจ้ง)
+            let userRepairs = repairs.filter(repair => repair.reporterName === reporterName);
+            
+            // ถ้ายังไม่ได้กรอกชื่อ หรือไม่มีรายการ
+            if (!reporterName || userRepairs.length === 0) {
+                userRepairListElement.innerHTML = '<h2>รายการแจ้งซ่อมของคุณ</h2><p>ยังไม่มีรายการแจ้งซ่อม</p>';
+                return;
+            }
+            
+            // เรียงลำดับรายการจากใหม่ไปเก่า
+            userRepairs.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            
+            // สร้าง HTML สำหรับแต่ละรายการ
+            let html = '<h2>รายการแจ้งซ่อมของคุณ</h2>';
+            
+            userRepairs.forEach(repair => {
+                const statusClass = getStatusClass(repair.status);
+                const costClass = repair.costType === 'เสียเงิน' ? 'paid-item' : 'no-cost-item';
+                
+                // สร้าง HTML สำหรับประวัติการเปลี่ยนแปลง
+                let historyHtml = '';
+                if (repair.history && repair.history.length > 0) {
+                    historyHtml = '<div style="margin-top:10px;"><strong>ประวัติ:</strong>';
+                    repair.history.forEach(record => {
+                        const statusClass = getHistoryStatusClass(record.status);
+                        historyHtml += `
+                            <div class="history-item">
+                                <span>${record.action}</span>
+                                <span class="history-status ${statusClass}">${record.status}</span>
+                                <div class="history-date">${record.date}</div>
+                            </div>
+                        `;
+                    });
+                    historyHtml += '</div>';
+                }
+                
+                // สร้าง HTML สำหรับสลิปการจ่ายเงิน
+                let slipHtml = '';
+                if (repair.costType === 'เสียเงิน' && repair.status === 'รอจ่ายเงิน') {
+                    slipHtml = `
+                        <div class="slip-section">
+                            <h4>สลิปการจ่ายเงิน</h4>
+                            ${repair.slip ? `
+                                <div>
+                                    <img id="slipImage${repair.id}" class="slip-image" src="${repair.slip}" alt="สลิปการจ่ายเงิน">
+                                    <div class="slip-actions">
+                                        <button class="view-slip-btn" onclick="viewSlip(${repair.id})">ดูสลิปเต็มขนาด</button>
+                                        <button class="remove-slip-btn" onclick="removeSlip(${repair.id})">ลบสลิป</button>
+                                        <button class="upload-slip-btn" onclick="document.getElementById('newSlip${repair.id}').click()">เปลี่ยนสลิป</button>
+                                        <input type="file" id="newSlip${repair.id}" style="display:none" accept="image/*" onchange="handleSlipUpload(${repair.id}, this)">
+                                    </div>
+                                </div>
+                            ` : `
+                                <div>
+                                    <p>กรุณาอัพโหลดสลิปการจ่ายเงิน</p>
+                                    <div class="slip-actions">
+                                        <button class="upload-slip-btn" onclick="document.getElementById('newSlip${repair.id}').click()">อัพโหลดสลิป</button>
+                                        <input type="file" id="newSlip${repair.id}" style="display:none" accept="image/*" onchange="handleSlipUpload(${repair.id}, this)">
+                                    </div>
+                                </div>
+                            `}
+                        </div>
+                    `;
+                } else if (repair.costType === 'เสียเงิน' && repair.slip) {
+                    slipHtml = `
+                        <div class="slip-section">
+                            <h4>สลิปการจ่ายเงิน</h4>
+                            <div>
+                                <img id="slipImage${repair.id}" class="slip-image" src="${repair.slip}" alt="สลิปการจ่ายเงิน">
+                                <div class="slip-actions">
+                                    <button class="view-slip-btn" onclick="viewSlip(${repair.id})">ดูสลิปเต็มขนาด</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += `
+                    <div class="repair-item ${statusClass} ${costClass}">
+                        <div class="repair-details">
+                            <div>
+                                <p><strong>เลขที่คำสั่งซ่อม:</strong> <span class="repair-id">${repair.repairId}</span></p>
+                                <p><strong>ห้อง:</strong> ${repair.roomNumber}</p>
+                                <p><strong>อุปกรณ์:</strong> ${repair.repairItemName}</p>
+                            </div>
+                            <div>
+                                <p><strong>ค่าใช้จ่าย:</strong> ${repair.costType}${repair.costType === 'เสียเงิน' ? ' (' + repair.costAmount.toLocaleString() + ' บาท)' : ''}</p>
+                                <p><strong>สถานะ:</strong> ${repair.status}</p>
+                                <p><strong>วันที่แจ้ง:</strong> ${repair.date}</p>
+                            </div>
+                        </div>
+                        <p><strong>รายละเอียด:</strong> ${repair.repairDetail}</p>
+                        
+                        ${slipHtml}
+                        
+                        ${historyHtml}
+                    </div>
+                `;
+            });
+            
+            userRepairListElement.innerHTML = html;
+        }
+        
+        // อัปเดตสถิติและกราฟ
+        function updateStats() {
+            if (currentUserType !== 'admin') return;
+            
+            // คำนวณสถิติ
+            const totalRepairs = repairs.length;
+            const pendingRepairs = repairs.filter(r => r.status === 'รอซ่อม').length;
+            const waitingPaymentRepairs = repairs.filter(r => r.status === 'รอจ่ายเงิน').length;
+            const completedRepairs = repairs.filter(r => r.status === 'เสร็จสิ้น').length;
+            
+            // อัปเดตตัวเลขสถิติ
+            document.getElementById('totalRepairs').textContent = totalRepairs;
+            document.getElementById('pendingRepairs').textContent = pendingRepairs;
+            document.getElementById('waitingPaymentRepairs').textContent = waitingPaymentRepairs;
+            document.getElementById('completedRepairs').textContent = completedRepairs;
+            
+            // สร้างกราฟสถานะ
+            createStatusChart(pendingRepairs, waitingPaymentRepairs, completedRepairs);
+            
+            // สร้างกราฟอุปกรณ์
+            createItemChart();
+        }
+        
+        // สร้างกราฟแสดงสถานะการซ่อม
+        function createStatusChart(pending, waitingPayment, completed) {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            
+            // ถ้ามีกราฟเก่าอยู่ ให้ทำลายก่อนสร้างใหม่
+            if (statusChart) {
+                statusChart.destroy();
+            }
+            
+            statusChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['รอซ่อม', 'รอจ่ายเงิน', 'เสร็จสิ้น'],
+                    datasets: [{
+                        data: [pending, waitingPayment, completed],
+                        backgroundColor: [
+                            '#f39c12',
+                            '#e74c3c',
+                            '#2ecc71'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'สถานะการแจ้งซ่อม',
+                            font: {
+                                family: 'Kanit',
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    family: 'Kanit'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // สร้างกราฟแสดงอุปกรณ์ที่แจ้งซ่อมบ่อยที่สุด
+        function createItemChart() {
+            const ctx = document.getElementById('itemChart').getContext('2d');
+            
+            // นับจำนวนการแจ้งซ่อมแต่ละอุปกรณ์
+            const itemCounts = {};
+            repairItemsData.forEach(item => {
+                itemCounts[item.name] = repairs.filter(r => r.repairItemId === item.id).length;
+            });
+            
+            // เรียงลำดับจากมากไปน้อย
+            const sortedItems = Object.entries(itemCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5); // แสดงเฉพาะ 5 อันดับแรก
+            
+            // ถ้ามีกราฟเก่าอยู่ ให้ทำลายก่อนสร้างใหม่
+            if (itemChart) {
+                itemChart.destroy();
+            }
+            
+            itemChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedItems.map(item => item[0]),
+                    datasets: [{
+                        label: 'จำนวนการแจ้งซ่อม',
+                        data: sortedItems.map(item => item[1]),
+                        backgroundColor: '#3498db',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '5 อุปกรณ์ที่แจ้งซ่อมบ่อยที่สุด',
+                            font: {
+                                family: 'Kanit',
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // ดูสลิปการจ่ายเงินแบบเต็มหน้าจอ
+        function viewSlip(repairId) {
+            const repair = repairs.find(r => r.id === repairId);
+            if (repair && repair.slip) {
+                const modal = document.getElementById('slipModal');
+                const modalImg = document.getElementById('modalSlipImage');
+                
+                modal.style.display = "block";
+                modalImg.src = repair.slip;
+                
+                // ปิด modal เมื่อคลิกนอกภาพ
+                modal.onclick = function(event) {
+                    if (event.target === modal) {
+                        closeModal();
+                    }
+                };
+            }
+        }
+        
+        // ปิด Modal
+        function closeModal() {
+            document.getElementById('slipModal').style.display = "none";
+            document.getElementById('loginModal').style.display = "none";
+        }
+        
+        // จัดการการอัพโหลดสลิป
+        function handleSlipUpload(repairId, inputElement) {
+            const file = inputElement.files[0];
+            if (!file) return;
+            
+            if (!file.type.match('image.*')) {
+                showNotification('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // อัพเดทข้อมูลการซ่อม
+                const repairIndex = repairs.findIndex(r => r.id === repairId);
+                if (repairIndex !== -1) {
+                    repairs[repairIndex].slip = e.target.result;
+                    repairs[repairIndex].updatedAt = new Date().toLocaleString();
+                    
+                    // เพิ่มประวัติการอัพโหลดสลิป
+                    repairs[repairIndex].history.push({
+                        date: new Date().toLocaleString(),
+                        status: repairs[repairIndex].status,
+                        action: 'อัพโหลดสลิปการจ่ายเงิน'
+                    });
+                    
+                    saveToLocalStorage();
+                    updateRepairList();
+                    updateUserRepairList();
+                    showNotification('อัพโหลดสลิปเรียบร้อยแล้ว', 'success');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // ลบสลิป
+        function removeSlip(repairId) {
+            if (confirm('คุณแน่ใจว่าต้องการลบสลิปนี้?')) {
+                const repairIndex = repairs.findIndex(r => r.id === repairId);
+                if (repairIndex !== -1) {
+                    repairs[repairIndex].slip = null;
+                    repairs[repairIndex].updatedAt = new Date().toLocaleString();
+                    
+                    // เพิ่มประวัติการลบสลิป
+                    repairs[repairIndex].history.push({
+                        date: new Date().toLocaleString(),
+                        status: repairs[repairIndex].status,
+                        action: 'ลบสลิปการจ่ายเงิน'
+                    });
+                    
+                    saveToLocalStorage();
+                    updateRepairList();
+                    updateUserRepairList();
+                    showNotification('ลบสลิปเรียบร้อยแล้ว', 'success');
+                }
+            }
+        }
+        
+        // ส่งออกข้อมูลเป็นไฟล์ JSON
+        function exportData() {
+            const dataToExport = {
+                repairs: repairs,
+                repairCounter: repairCounter,
+                exportedAt: new Date().toISOString()
+            };
+            
+            const dataStr = JSON.stringify(dataToExport, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `repair-system-backup-${new Date().toISOString().slice(0,10)}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            showNotification('ส่งออกข้อมูลสำเร็จ', 'success');
+        }
+        
+        // นำเข้าข้อมูลจากไฟล์ JSON
+        function importData(inputElement) {
+            const file = inputElement.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    if (confirm(`คุณแน่ใจว่าต้องการนำเข้าข้อมูล? จะมีรายการแจ้งซ่อม ${importedData.repairs.length} รายการถูกเพิ่ม`)) {
+                        // ตรวจสอบข้อมูลที่นำเข้า
+                        if (Array.isArray(importedData.repairs)) {
+                            repairs = importedData.repairs;
+                            
+                            if (importedData.repairCounter) {
+                                repairCounter = importedData.repairCounter;
+                            } else {
+                                updateRepairCounter();
+                            }
+                            
+                            saveToLocalStorage();
+                            updateRepairList();
+                            updateUserRepairList();
+                            updateStats();
+                            
+                            showNotification('นำเข้าข้อมูลสำเร็จ', 'success');
+                        } else {
+                            showNotification('รูปแบบไฟล์ไม่ถูกต้อง', 'error');
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error importing data:', e);
+                    showNotification('เกิดข้อผิดพลาดในการนำเข้าข้อมูล', 'error');
+                }
+            };
+            reader.readAsText(file);
+            
+            // รีเซ็ต input file เพื่อให้สามารถเลือกไฟล์เดิมได้อีกครั้ง
+            inputElement.value = '';
         }
         
         function getStatusName(filter) {
@@ -372,6 +1273,15 @@
             }
         }
         
+        function getHistoryStatusClass(status) {
+            switch(status) {
+                case 'รอซ่อม': return 'history-status-pending';
+                case 'รอจ่ายเงิน': return 'history-status-waiting';
+                case 'เสร็จสิ้น': return 'history-status-completed';
+                default: return '';
+            }
+        }
+        
         function filterRepairs(filter) {
             updateRepairList(filter);
         }
@@ -379,18 +1289,33 @@
         function updateStatus(id, newStatus) {
             const repairIndex = repairs.findIndex(repair => repair.id === id);
             if (repairIndex !== -1) {
+                const oldStatus = repairs[repairIndex].status;
                 repairs[repairIndex].status = newStatus;
                 repairs[repairIndex].updatedAt = new Date().toLocaleString();
+                
+                // เพิ่มประวัติการเปลี่ยนสถานะ
+                repairs[repairIndex].history.push({
+                    date: new Date().toLocaleString(),
+                    status: newStatus,
+                    action: `เปลี่ยนสถานะจาก ${oldStatus} เป็น ${newStatus}`
+                });
+                
+                saveToLocalStorage();
                 updateRepairList();
-                alert('อัปเดตสถานะเรียบร้อยแล้ว');
+                updateUserRepairList();
+                updateStats();
+                showNotification('อัปเดตสถานะเรียบร้อยแล้ว', 'success');
             }
         }
         
         function deleteRepair(id) {
             if (confirm('คุณแน่ใจว่าต้องการลบรายการนี้?')) {
                 repairs = repairs.filter(repair => repair.id !== id);
+                saveToLocalStorage();
                 updateRepairList();
-                alert('ลบรายการเรียบร้อยแล้ว');
+                updateUserRepairList();
+                updateStats();
+                showNotification('ลบรายการเรียบร้อยแล้ว', 'success');
             }
         }
     </script>
